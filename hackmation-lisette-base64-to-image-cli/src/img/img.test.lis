@@ -1,0 +1,74 @@
+#[test]
+fn decodes_padded_base64() {
+  let assert Ok(data) = decode("aGVsbG8=")
+  assert (data as string) == "hello"
+}
+
+#[test]
+fn ignores_surrounding_whitespace() {
+  let assert Ok(data) = decode("  aGVs\nbG8=\n")
+  assert (data as string) == "hello"
+}
+
+#[test]
+fn rejects_invalid_base64() {
+  let assert Err(_) = decode("not base64!!!")
+}
+
+#[test]
+fn detects_png() {
+  let header: Slice<byte> = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+  let assert Some(format) = detect(header)
+  assert format.name() == "PNG"
+}
+
+#[test]
+fn detects_jpeg() {
+  let header: Slice<byte> = [0xFF, 0xD8, 0xFF, 0xE0]
+  let assert Some(format) = detect(header)
+  assert format.name() == "JPEG"
+}
+
+#[test]
+fn detects_gif() {
+  let assert Some(format) = detect("GIF89a" as Slice<byte>)
+  assert format.name() == "GIF"
+}
+
+#[test]
+fn detects_webp() {
+  // "RIFF" <4-byte size> "WEBP"
+  let header: Slice<byte> = [
+    0x52,
+    0x49,
+    0x46,
+    0x46,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x57,
+    0x45,
+    0x42,
+    0x50,
+  ]
+  let assert Some(format) = detect(header)
+  assert format.name() == "WebP"
+}
+
+#[test]
+fn detects_bmp() {
+  let header: Slice<byte> = [0x42, 0x4D, 0x00, 0x00]
+  let assert Some(format) = detect(header)
+  assert format.name() == "BMP"
+}
+
+#[test]
+fn rejects_unknown_bytes() {
+  let assert None = detect("hello" as Slice<byte>)
+}
+
+#[test]
+fn rejects_truncated_webp_header() {
+  let assert None = detect("RIFF" as Slice<byte>)
+}

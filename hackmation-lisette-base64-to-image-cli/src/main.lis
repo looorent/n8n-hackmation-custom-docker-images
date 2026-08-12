@@ -1,0 +1,51 @@
+import "go:fmt"
+import "go:io"
+import "go:os"
+
+import "img"
+
+fn main() {
+  if let Err(msg) = run() {
+    let _ = fmt.Fprintln(os.Stderr, f"error: {msg}")
+    os.Exit(1)
+  }
+}
+
+// The Base64 text comes from the first argument when given, otherwise from
+// stdin. The decoded image goes to stdout; diagnostics go to stderr so the
+// stdout stream stays a pure image.
+fn run() -> Result<(), string> {
+  let input = match os.Args.get(1) {
+    Some(arg) => arg,
+    None => read_stdin()?,
+  }
+
+  let Ok(data) = img.decode(input) else {
+    return Err("input is not valid Base64")
+  }
+
+  let Some(format) = img.detect(data) else {
+    return Err(
+      "decoded bytes are not a recognized image format (PNG, JPEG, GIF, WebP, BMP)",
+    )
+  }
+
+  let _ = fmt.Fprintln(os.Stderr, f"detected: {format.name()}")
+  write_stdout(data)
+}
+
+fn read_stdin() -> Result<string, string> {
+  match io.ReadAll(os.Stdin) {
+    Partial.Ok(data) => Ok(data as string),
+    Partial.Both(_, _) => Err("failed to read stdin"),
+    Partial.Err(_) => Err("failed to read stdin"),
+  }
+}
+
+fn write_stdout(data: Slice<byte>) -> Result<(), string> {
+  match os.Stdout.Write(data) {
+    Partial.Ok(_) => Ok(()),
+    Partial.Both(_, _) => Err("failed to write to stdout"),
+    Partial.Err(_) => Err("failed to write to stdout"),
+  }
+}

@@ -1,0 +1,5 @@
+target/
+.git/
+*.png
+README.md
+AGENTS.md

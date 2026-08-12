@@ -1,0 +1,16 @@
+# The native binary only needs glibc's loader, libc, and libz (see `ldd`),
+# so the runtime image is `scratch` plus exactly those files, taken from the
+# same builder image that compiled the binary. The glob + copy-through-a-stage
+# dance keeps this working on both aarch64 (loader in /lib) and x86_64
+# (loader in /lib64).
+FROM quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25 AS libs
+USER root
+RUN mkdir -p /out/lib /out/lib64 \
+	&& (cp -a /lib/ld-linux-*.so.* /out/lib/ 2>/dev/null || true) \
+	&& (cp -a /lib64/ld-linux-*.so.* /out/lib64/ 2>/dev/null || true) \
+	&& cp -aL /lib64/libc.so.6 /lib64/libz.so.1 /out/lib64/
+
+FROM scratch
+COPY --from=libs /out/ /
+COPY build/*-runner /qr-code-cli
+ENTRYPOINT ["/qr-code-cli"]

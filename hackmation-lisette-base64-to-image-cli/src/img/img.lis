@@ -1,0 +1,52 @@
+import "go:bytes"
+import "go:encoding/base64"
+import "go:strings"
+
+pub enum Format {
+  Png,
+  Jpeg,
+  Gif,
+  Webp,
+  Bmp,
+}
+
+impl Format {
+  pub fn name(self) -> string {
+    match self {
+      Format.Png => "PNG",
+      Format.Jpeg => "JPEG",
+      Format.Gif => "GIF",
+      Format.Webp => "WebP",
+      Format.Bmp => "BMP",
+    }
+  }
+}
+
+/// Decodes standard Base64 (RFC 4648, padded alphabet). Whitespace anywhere
+/// in the input is ignored, so piped text with trailing newlines decodes
+/// cleanly. Returns `Err` when the remaining text is not valid Base64.
+pub fn decode(input: string) -> Result<Slice<byte>, error> {
+  let compact = strings.Join(strings.Fields(input), "")
+  match base64.StdEncoding.DecodeString(compact) {
+    Partial.Ok(data) => Ok(data),
+    Partial.Both(_, err) => Err(err),
+    Partial.Err(err) => Err(err),
+  }
+}
+
+/// Identifies the image format of raw bytes by their magic numbers.
+/// Returns `None` when the bytes match no supported format.
+pub fn detect(data: Slice<byte>) -> Option<Format> {
+  if bytes.HasPrefix(data, [0x89, 0x50, 0x4E, 0x47]) { return Some(Format.Png) }
+  if bytes.HasPrefix(data, [0xFF, 0xD8, 0xFF]) { return Some(Format.Jpeg) }
+  if bytes.HasPrefix(data, "GIF8" as Slice<byte>) { return Some(Format.Gif) }
+  if is_webp(data) { return Some(Format.Webp) }
+  if bytes.HasPrefix(data, "BM" as Slice<byte>) { return Some(Format.Bmp) }
+  None
+}
+
+// WebP wraps its payload in a RIFF container: "RIFF" <4-byte size> "WEBP".
+fn is_webp(data: Slice<byte>) -> bool {
+  data.length() >= 12 && bytes.HasPrefix(data, "RIFF" as Slice<byte>) &&
+  bytes.Equal(data[8..12], "WEBP" as Slice<byte>)
+}

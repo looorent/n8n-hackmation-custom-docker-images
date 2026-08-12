@@ -1,0 +1,3 @@
+# Local test artifacts (decoded QR codes, sample images)
+/*.png
+.DS_Store
